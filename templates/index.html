@@ -2,14 +2,134 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Dashboard Cubos</title>
+<title>Dashboard Completo de Cubos</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body { font-family: Arial; background:#111827; color:#fff; margin:0; padding:20px; }
+h1 { text-align:center; }
+.grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(380px,1fr));
+    gap:20px;
+}
+.card {
+    background:#1f2937;
+    padding:15px;
+    border-radius:12px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.4);
+}
+</style>
 </head>
+
 <body>
+
 <h1>Dashboard Completo de Cubos</h1>
-<canvas id="chartResumen"></canvas>
+
+<div class="grid">
+
+    <div class="card">
+        <h3>Aceptados vs Rechazados</h3>
+        <canvas id="chartResumen"></canvas>
+        <p id="textoResumen"></p>
+    </div>
+
+    <div class="card">
+        <h3>Promedio de Confianza por Color</h3>
+        <canvas id="chartConfianza"></canvas>
+    </div>
+
+    <div class="card">
+        <h3>Tiempo Promedio por Cantidad</h3>
+        <canvas id="chartTiempo"></canvas>
+    </div>
+
+    <div class="card">
+        <h3>Pedidos más Populares (Pastel)</h3>
+        <canvas id="chartPopulares"></canvas>
+    </div>
+
+</div>
+
 <script>
-fetch('/resumen').then(r=>r.json()).then(d=>console.log(d));
-</script>
-</body>
-</html>
+let chartResumen, chartConfianza, chartTiempo, chartPopulares;
+
+function actualizarResumen() {
+    fetch("/resumen")
+        .then(r=>r.json())
+        .then(d=>{
+            const ctx = document.getElementById("chartResumen").getContext("2d");
+            const data = [d.aceptados, d.rechazados];
+
+            if (!chartResumen) {
+                chartResumen = new Chart(ctx, {
+                    type:"bar",
+                    data:{
+                        labels:["Aceptados","Rechazados"],
+                        datasets:[{ data:data, backgroundColor:["#10b981","#ef4444"] }]
+                    }
+                });
+            } else {
+                chartResumen.data.datasets[0].data = data;
+                chartResumen.update();
+            }
+
+            document.getElementById("textoResumen").textContent =
+                `Aceptados: ${d.aceptados} (${d.porcentaje_aceptados}%) | Rechazados: ${d.rechazados} (${d.porcentaje_rechazados}%)`;
+        });
+}
+
+function actualizarConfianza() {
+    fetch("/promedio_confianza_colores")
+        .then(r=>r.json())
+        .then(d=>{
+            const ctx = document.getElementById("chartConfianza").getContext("2d");
+            const labels=["Rojo","Verde","Azul"];
+            const valores=[d.rojo,d.verde,d.azul];
+
+            if (!chartConfianza) {
+                chartConfianza = new Chart(ctx,{
+                    type:"bar",
+                    data:{
+                        labels:labels,
+                        datasets:[{ 
+                            data:valores,
+                            backgroundColor:["#ef4444","#10b981","#3b82f6"]
+                        }]
+                    }
+                });
+            } else {
+                chartConfianza.data.datasets[0].data = valores;
+                chartConfianza.update();
+            }
+        });
+}
+
+function actualizarTiempo() {
+    fetch("/promedio_tiempo_piezas")
+        .then(r=>r.json())
+        .then(d=>{
+            const ctx = document.getElementById("chartTiempo").getContext("2d");
+
+            if (!chartTiempo) {
+                chartTiempo = new Chart(ctx,{
+                    type:"line",
+                    data:{
+                        labels:d.cantidades.map(c=>c+" cubos"),
+                        datasets:[{
+                            label:"Segundos promedio",
+                            data:d.promedios_segundos,
+                            borderColor:"#fbbf24"
+                        }]
+                    }
+                });
+            } else {
+                chartTiempo.data.labels = d.cantidades.map(c=>c+" cubos");
+                chartTiempo.data.datasets[0].data = d.promedios_segundos;
+                chartTiempo.update();
+            }
+        });
+}
+
+function actualizarPopulares() {
+    fetc
