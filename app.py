@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, render_template
-import os
 import psycopg2
+import os
 
 app = Flask(__name__)
 
@@ -10,115 +10,125 @@ DB = {
     "dbname": os.getenv("NEON_DB"),
     "user": os.getenv("NEON_USER"),
     "password": os.getenv("NEON_PASSWORD"),
-    "sslmode": "require",
+    "sslmode": "require"
 }
 
-def get_conn():
+TABLE_DETECCIONES = "detecciones"
+TABLE_PEDIDOS = "pedidos"
+
+def get_connection():
     return psycopg2.connect(**DB)
+
+# ==========================
+#   RUTAS PARA TU DASHBOARD
+# ==========================
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
+# 1️⃣ RESUMEN ACEPTADOS / RECHAZADOS
 @app.route("/resumen")
 def resumen():
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT resultado, COUNT(*)
-        FROM detecciones
-        WHERE resultado IN ('aceptado','rechazado')
-        GROUP BY resultado;
-    """)
-    rows = cur.fetchall()
-    cur.close()
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(f"SELECT resultado FROM {TABLE_DETECCIONES}")
+    rows = cursor.fetchall()
+
+    aceptados = sum(1 for r in rows if r[0] == "aceptado")
+    rechazados = sum(1 for r in rows if r[0] == "rechazado")
+
+    cursor.close()
     conn.close()
-    total = sum(r[1] for r in rows) or 1
-    aceptados = next((c for res, c in rows if res == "aceptado"), 0)
-    rechazados = next((c for res, c in rows if res == "rechazado"), 0)
+
     return jsonify({
         "aceptados": aceptados,
-        "rechazados": rechazados,
-        "porcentaje_aceptados": round(aceptados * 100 / total, 2),
-        "porcentaje_rechazados": round(rechazados * 100 / total, 2),
+        "rechazados": rechazados
     })
 
+# 2️⃣ PROMEDIO DE CONFIANZA POR COLOR
 @app.route("/promedio_confianza_colores")
-def promedio_confianza_colores():
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT
-            CASE
-                WHEN gpio_activado = 17 THEN 'rojo'
-                WHEN gpio_activado = 27 THEN 'verde'
-                WHEN gpio_activado = 22 THEN 'azul'
-                ELSE 'otro'
-            END AS color,
-            AVG(_confianza)
-        FROM detecciones
-        WHERE resultado = 'aceptado'
-        GROUP BY color
-        HAVING color IN ('rojo','verde','azul');
-    """)
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    data = {c: float(v) for c, v in rows}
-    for c in ["rojo","verde","azul"]:
-        data.setdefault(c, 0.0)
-    return jsonify(data)
+def promedio_confianza():
+    conn = get_connection()
+    cursor = conn.cursor()
 
+    cursor.execute(f"""
+        SELECT 
+            AVG(confianza) FILTER (WHERE gpio_activado = 17),
+            AVG(confianza) FILTER (WHERE gpio_activado = 22),
+            AVG(confianza) FILTER (WHERE gpio_activado = 27)
+        FROM {TABLE_DETECCIONES};
+    """)
+
+    rojo, verde, azul = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify({
+        "rojo": rojo,
+        "verde": verde,
+        "azul": azul
+    })
+
+# 3️⃣ TIEMPO PROMEDIO DE PEDIDOS
 @app.route("/promedio_tiempo_piezas")
-def promedio_tiempo_piezas():
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT
-            (rojos_solicitados + verdes_solicitados + azules_solicitados) AS cantidad,
-            AVG(fecha_hora_finalizada - fecha_hora_inicio)
-        FROM pedidos
-        WHERE fecha_hora_inicio IS NOT NULL
-          AND fecha_hora_finalizada IS NOT NULL
-        GROUP BY cantidad
-        ORDER BY cantidad;
-    """)
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    cantidades=[]
-    promedios=[]
-    for cant, interval in rows:
-        segundos = interval.total_seconds() if interval else 0
-        cantidades.append(int(cant))
-        promedios.append(segundos)
-    return jsonify({"cantidades": cantidades,"promedios_segundos": promedios})
+def tiempo_promedio():
+    conn = get_connection()
+    cursor = conn.cursor()
 
+    cursor.execute(f"""
+        SELECT 
+            rojos_solicitados + verdes_solicitados + azules_solicitados AS piezas,
+            EXTRACT(EPOCH FROM (fecha_hora_finalizado - fecha_hora_inicio)) AS segundos
+        FROM {TABLE_PEDIDOS}
+        WHERE fecha_hora_finalizado IS NOT NULL;
+    """)
+
+    rows = cursor.fetchall()
+
+    tiempos = {}
+    conteo = {}
+
+    for piezas, segundos in rows:
+        if piezas not in tiempos:
+            tiempos[piezas] = 0
+            conteo[piezas] = 0
+        tiempos[piezas] += segundos
+        conteo[piezas] += 1
+
+    promedio = {p: tiempos[p] / conteo[p] for p in tiempos}
+
+    cursor.close()
+    conn.close()
+
+    return jsonify(promedio)
+
+# 4️⃣ PEDIDOS MÁS POPULARES (PASTEL)
 @app.route("/pedidos_populares")
 def pedidos_populares():
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        WITH t AS (
-            SELECT
-                (rojos_solicitados + verdes_solicitados + azules_solicitados) AS cantidad,
-                COUNT(*) AS veces
-            FROM pedidos
-            GROUP BY cantidad
-        )
-        SELECT cantidad, veces,
-               ROUND(100.0 * veces / SUM(veces) OVER(), 2)
-        FROM t
-        ORDER BY cantidad;
-    """)
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return jsonify({
-        "cantidades":[int(r[0]) for r in rows],
-        "veces":[int(r[1]) for r in rows],
-        "porcentajes":[float(r[2]) for r in rows]
-    })
+    conn = get_connection()
+    cursor = conn.cursor()
 
+    cursor.execute(f"""
+        SELECT 
+            rojos_solicitados + verdes_solicitados + azules_solicitados AS piezas,
+            COUNT(*)
+        FROM {TABLE_PEDIDOS}
+        GROUP BY piezas
+        ORDER BY piezas;
+    """)
+
+    rows = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify({str(p): c for p, c in rows})
+
+# ==========================
+#   INICIAR SERVIDOR
+# ==========================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0",port=5000)
+    app.run(host="0.0.0.0", port=5000)
