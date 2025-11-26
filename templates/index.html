@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Cubos</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<h1>Dashboard Completo de Cubos</h1>
+<canvas id="chartResumen"></canvas>
+<script>
+fetch('/resumen').then(r=>r.json()).then(d=>console.log(d));
+</script>
+</body>
+</html>
