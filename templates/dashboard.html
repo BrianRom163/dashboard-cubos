@@ -54,12 +54,15 @@ h1 { text-align:center; }
 <script>
 let chartResumen, chartConfianza, chartTiempo, chartPopulares;
 
+/* -------------------------------
+    1️⃣ ACEPTADOS VS RECHAZADOS
+-------------------------------- */
 function actualizarResumen() {
-    fetch("/resumen")
+    fetch("/api/resumen")
         .then(r=>r.json())
         .then(d=>{
             const ctx = document.getElementById("chartResumen").getContext("2d");
-            const data = [d.aceptados, d.rechazados];
+            const data = [d.aceptado, d.rechazado];
 
             if (!chartResumen) {
                 chartResumen = new Chart(ctx, {
@@ -75,17 +78,21 @@ function actualizarResumen() {
             }
 
             document.getElementById("textoResumen").textContent =
-                `Aceptados: ${d.aceptados} (${d.porcentaje_aceptados}%) | Rechazados: ${d.rechazados} (${d.porcentaje_rechazados}%)`;
+                `Aceptados: ${d.aceptado}  |  Rechazados: ${d.rechazado}`;
         });
 }
 
+/* -------------------------------
+    2️⃣ PROMEDIO CONFIANZA
+-------------------------------- */
 function actualizarConfianza() {
-    fetch("/promedio_confianza_colores")
+    fetch("/api/confianza")
         .then(r=>r.json())
         .then(d=>{
             const ctx = document.getElementById("chartConfianza").getContext("2d");
-            const labels=["Rojo","Verde","Azul"];
-            const valores=[d.rojo,d.verde,d.azul];
+
+            const labels = Object.keys(d);
+            const valores = Object.values(d);
 
             if (!chartConfianza) {
                 chartConfianza = new Chart(ctx,{
@@ -94,42 +101,96 @@ function actualizarConfianza() {
                         labels:labels,
                         datasets:[{ 
                             data:valores,
-                            backgroundColor:["#ef4444","#10b981","#3b82f6"]
+                            backgroundColor:["#ef4444","#10b981","#3b82f6","#8b5cf6"]
                         }]
                     }
                 });
             } else {
+                chartConfianza.data.labels = labels;
                 chartConfianza.data.datasets[0].data = valores;
                 chartConfianza.update();
             }
         });
 }
 
+/* -------------------------------
+    3️⃣ TIEMPOS PROMEDIO
+-------------------------------- */
 function actualizarTiempo() {
-    fetch("/promedio_tiempo_piezas")
+    fetch("/api/tiempos")
         .then(r=>r.json())
         .then(d=>{
             const ctx = document.getElementById("chartTiempo").getContext("2d");
+
+            const labels = Object.keys(d).map(x=>x+" cubos");
+            const valores = Object.values(d);
 
             if (!chartTiempo) {
                 chartTiempo = new Chart(ctx,{
                     type:"line",
                     data:{
-                        labels:d.cantidades.map(c=>c+" cubos"),
+                        labels:labels,
                         datasets:[{
-                            label:"Segundos promedio",
-                            data:d.promedios_segundos,
-                            borderColor:"#fbbf24"
+                            label:"Minutos promedio",
+                            data:valores,
+                            borderColor:"#fbbf24",
+                            tension:0.3
                         }]
                     }
                 });
             } else {
-                chartTiempo.data.labels = d.cantidades.map(c=>c+" cubos");
-                chartTiempo.data.datasets[0].data = d.promedios_segundos;
+                chartTiempo.data.labels = labels;
+                chartTiempo.data.datasets[0].data = valores;
                 chartTiempo.update();
             }
         });
 }
 
+/* -------------------------------
+    4️⃣ PEDIDOS POPULARES
+-------------------------------- */
 function actualizarPopulares() {
-    fetc
+    fetch("/api/populares")
+        .then(r=>r.json())
+        .then(d=>{
+            const ctx = document.getElementById("chartPopulares").getContext("2d");
+
+            const labels = Object.keys(d).map(x=>x+" cubos");
+            const valores = Object.values(d);
+
+            if (!chartPopulares) {
+                chartPopulares = new Chart(ctx,{
+                    type:"pie",
+                    data:{
+                        labels:labels,
+                        datasets:[{
+                            data:valores,
+                            backgroundColor:["#3b82f6","#10b981","#ef4444","#f97316","#8b5cf6"]
+                        }]
+                    }
+                });
+            } else {
+                chartPopulares.data.labels = labels;
+                chartPopulares.data.datasets[0].data = valores;
+                chartPopulares.update();
+            }
+        });
+}
+
+/* -------------------------------
+    AUTO CARGA AL ENTRAR
+-------------------------------- */
+function cargarTodo() {
+    actualizarResumen();
+    actualizarConfianza();
+    actualizarTiempo();
+    actualizarPopulares();
+}
+
+cargarTodo();
+// Recargar cada 10 segundos
+setInterval(cargarTodo, 10000);
+</script>
+
+</body>
+</html>
