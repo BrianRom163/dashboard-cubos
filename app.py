@@ -4,6 +4,10 @@ import os
 
 app = Flask(__name__)
 
+# ==============================
+#   CONFIGURACIÓN BASE DE DATOS
+# ==============================
+
 DB = {
     "host": os.getenv("NEON_HOST"),
     "port": "5432",
@@ -19,15 +23,16 @@ TABLE_PEDIDOS = "pedidos"
 def get_connection():
     return psycopg2.connect(**DB)
 
-# ==========================
-#   RUTAS PARA TU DASHBOARD
-# ==========================
-
+# ==============================
+#   RUTA PRINCIPAL – CARGA HTML
+# ==============================
 @app.route("/")
 def index():
     return render_template("index.html")
 
-# 1️⃣ RESUMEN ACEPTADOS / RECHAZADOS
+# ==========================================
+#   1️⃣ ACEPTADOS VS RECHAZADOS (HISTOGRAMA)
+# ==========================================
 @app.route("/resumen")
 def resumen():
     conn = get_connection()
@@ -47,9 +52,11 @@ def resumen():
         "rechazados": rechazados
     })
 
-# 2️⃣ PROMEDIO DE CONFIANZA POR COLOR
+# =================================================
+#   2️⃣ PROMEDIO DE CONFIANZA POR COLOR (DETECCIONES)
+# =================================================
 @app.route("/promedio_confianza_colores")
-def promedio_confianza():
+def promedio_colores():
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -58,7 +65,7 @@ def promedio_confianza():
             AVG(confianza) FILTER (WHERE gpio_activado = 17),
             AVG(confianza) FILTER (WHERE gpio_activado = 22),
             AVG(confianza) FILTER (WHERE gpio_activado = 27)
-        FROM {TABLE_DETECCIONES};
+        FROM {TABLE_DETECCIONES}
     """)
 
     rojo, verde, azul = cursor.fetchone()
@@ -72,9 +79,11 @@ def promedio_confianza():
         "azul": azul
     })
 
-# 3️⃣ TIEMPO PROMEDIO DE PEDIDOS
+# ==========================================
+# 3️⃣ TIEMPO PROMEDIO DE PEDIDOS POR CANTIDAD
+# ==========================================
 @app.route("/promedio_tiempo_piezas")
-def tiempo_promedio():
+def tiempos():
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -91,23 +100,25 @@ def tiempo_promedio():
     tiempos = {}
     conteo = {}
 
-    for piezas, segundos in rows:
+    for piezas, seg in rows:
         if piezas not in tiempos:
             tiempos[piezas] = 0
             conteo[piezas] = 0
-        tiempos[piezas] += segundos
+        tiempos[piezas] += seg
         conteo[piezas] += 1
 
-    promedio = {p: tiempos[p] / conteo[p] for p in tiempos}
+    promedios = {p: tiempos[p] / conteo[p] for p in tiempos}
 
     cursor.close()
     conn.close()
 
-    return jsonify(promedio)
+    return jsonify(promedios)
 
-# 4️⃣ PEDIDOS MÁS POPULARES (PASTEL)
+# ==========================================
+#     4️⃣ PEDIDOS POPULARES (PASTEL)
+# ==========================================
 @app.route("/pedidos_populares")
-def pedidos_populares():
+def pedidos_pop():
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -125,10 +136,10 @@ def pedidos_populares():
     cursor.close()
     conn.close()
 
-    return jsonify({str(p): c for p, c in rows})
+    return jsonify({str(r[0]): r[1] for r in rows})
 
-# ==========================
+# ==========================================
 #   INICIAR SERVIDOR
-# ==========================
+# ==========================================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
