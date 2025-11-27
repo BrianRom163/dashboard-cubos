@@ -130,4 +130,15 @@ def populares():
         conn.close()
 
         return jsonify({
-            str
+            str(cant): count for cant, count in data
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# -------------------------------
+#       INICIAR SERVIDOR
+# -------------------------------
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
