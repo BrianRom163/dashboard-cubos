@@ -24,7 +24,7 @@ def get_connection():
 # -------------------------------
 @app.route("/")
 def dashboard():
-    return render_template("index.html")  # Tu archivo real
+    return render_template("dashboard.html")  # Tu archivo real
 
 
 # ------------------------------------------------
