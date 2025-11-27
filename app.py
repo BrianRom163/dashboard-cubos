@@ -1,20 +1,18 @@
-from flask import Flask, jsonify, render_template
 import psycopg2
 import os
+import urllib.parse as urlparse
 
-app = Flask(__name__)
+url = urlparse.urlparse(os.environ["DATABASE_URL"])
 
-# -------------------------------
-#   CONFIG DB DESDE VARIABLES
-# -------------------------------
 DB = {
-    "host": os.getenv("NEON_HOST"),
-    "port": 5432,
-    "dbname": os.getenv("NEON_DB"),
-    "user": os.getenv("NEON_USER"),
-    "password": os.getenv("NEON_PASSWORD"),
+    "dbname": url.path[1:],
+    "user": url.username,
+    "password": url.password,
+    "host": url.hostname,
+    "port": url.port,
     "sslmode": "require"
 }
+
 
 def get_connection():
     return psycopg2.connect(**DB)
