@@ -3,14 +3,14 @@ import psycopg2
 import os
 import urllib.parse as urlparse
 
-# -------------------------------------------------------------
+
 #       CONFIGURACIÓN DE FLASK
-# -------------------------------------------------------------
+
 app = Flask(__name__)
 
-# -------------------------------------------------------------
+
 #       CONEXIÓN A NeonDB usando DATABASE_URL
-# -------------------------------------------------------------
+
 url = urlparse.urlparse(os.environ["DATABASE_URL"])
 
 DB = {
@@ -25,17 +25,14 @@ DB = {
 def get_connection():
     return psycopg2.connect(**DB)
 
-# -------------------------------------------------------------
-#       RUTA PRINCIPAL (DASHBOARD)
-# -------------------------------------------------------------
+#   DASHBOARD
 @app.route("/")
 def dashboard():
     return render_template("dashboard.html")
 
 
-# -------------------------------------------------------------
-#  1️⃣ RESUMEN: Aceptados vs Rechazados
-# -------------------------------------------------------------
+
+#  RESUMEN: Aceptados vs Rechazados
 @app.route("/api/resumen")
 def resumen():
     try:
@@ -60,9 +57,7 @@ def resumen():
         return jsonify({"error": str(e)}), 500
 
 
-# -------------------------------------------------------------
-#  2️⃣ PROMEDIO DE CONFIANZA POR COLOR
-# -------------------------------------------------------------
+#   PROMEDIO DE CONFIANZA POR COLOR
 @app.route("/api/confianza")
 def confianza():
     try:
@@ -84,9 +79,7 @@ def confianza():
         return jsonify({"error": str(e)}), 500
 
 
-# -------------------------------------------------------------
-#  3️⃣ TIEMPO PROMEDIO POR CANTIDAD
-# -------------------------------------------------------------
+#  TIEMPO PROMEDIO POR CANTIDAD
 @app.route("/api/tiempos")
 def tiempos():
     try:
@@ -114,9 +107,7 @@ def tiempos():
         return jsonify({"error": str(e)}), 500
 
 
-# -------------------------------------------------------------
-#  4️⃣ PEDIDOS MÁS POPULARES (GRAFICA PASTEL)
-# -------------------------------------------------------------
+#   PEDIDOS MÁS POPULARES
 @app.route("/api/populares")
 def populares():
     try:
