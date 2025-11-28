@@ -54,9 +54,8 @@ h1 { text-align:center; }
 <script>
 let chartResumen, chartConfianza, chartTiempo, chartPopulares;
 
-/* -------------------------------
-    1️⃣ ACEPTADOS VS RECHAZADOS
--------------------------------- */
+/* 
+    ACEPTADOS VS RECHAZADOS */
 function actualizarResumen() {
     fetch("/api/resumen")
         .then(r=>r.json())
@@ -82,9 +81,8 @@ function actualizarResumen() {
         });
 }
 
-/* -------------------------------
-    2️⃣ PROMEDIO CONFIANZA
--------------------------------- */
+/* 
+     PROMEDIO CONFIANZA */
 function actualizarConfianza() {
     fetch("/api/confianza")
         .then(r=>r.json())
@@ -113,9 +111,8 @@ function actualizarConfianza() {
         });
 }
 
-/* -------------------------------
-    3️⃣ TIEMPOS PROMEDIO
--------------------------------- */
+/*
+    TIEMPOS PROMEDIO */
 function actualizarTiempo() {
     fetch("/api/tiempos")
         .then(r=>r.json())
@@ -146,9 +143,9 @@ function actualizarTiempo() {
         });
 }
 
-/* -------------------------------
-    4️⃣ PEDIDOS POPULARES
--------------------------------- */
+/* 
+     PEDIDOS POPULARES
+ */
 function actualizarPopulares() {
     fetch("/api/populares")
         .then(r=>r.json())
@@ -177,9 +174,8 @@ function actualizarPopulares() {
         });
 }
 
-/* -------------------------------
-    AUTO CARGA AL ENTRAR
--------------------------------- */
+/* 
+    AUTO CARGA AL ENTRAR */
 function cargarTodo() {
     actualizarResumen();
     actualizarConfianza();
